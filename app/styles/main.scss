@@ -92,4 +92,12 @@ body {
   }
 }
 
-// canvas { border: 1px solid black; }
+#stage {
+  width: 450px;
+  height: 450px;
+  position: relative;
+  //border: 2px solid black;
+}
+canvas { position: absolute; }
+#game-layer { z-index: 2 }
+#background-layer { z-index: 1 }

@@ -34,7 +34,10 @@
 
       <div class="row marketing">
         <div class="col-lg-12">
-          <canvas id="canvas1" class="center-block" width="450" height="450"></canvas>
+          <div id="stage" class="center-block">
+            <canvas id="game-layer" width="450" height="450"></canvas>
+            <canvas id="background-layer" width="450" height="450"></canvas>
+          </div>
         </div>
       </div>
 
@@ -42,6 +45,29 @@
         <p>♥ from the Zhen Kyle</p>
       </div>
     </div>
+
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title">Choose your side</h4>
+          </div>
+          <div class="modal-body text-center">
+            <label class="radio-inline">
+              <input type="radio" name="radioChoose" id="radioX" value="1" checked> X
+            </label>
+            <label class="radio-inline">
+              <input type="radio" name="radioChoose" id="radioO" value="10"> O
+            </label>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div><!-- /.modal-content -->
+      </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+
 
     <!-- Google Analytics: change UA-XXXXX-X to be your site's ID. -->
     <script>
@@ -56,6 +82,8 @@
     <!-- build:js scripts/vendor.js -->
     <!-- bower:js -->
     <script src="/bower_components/jquery/dist/jquery.js"></script>
+    <script src="/bower_components/underscore/underscore.js"></script>
+    <script src="/bower_components/backbone/backbone.js"></script>
     <!-- endbower -->
     <!-- endbuild -->
 
