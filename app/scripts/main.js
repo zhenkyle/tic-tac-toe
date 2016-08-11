@@ -70,67 +70,83 @@ $(document).ready(function() {
         ctx.arc(90,65,5,0,Math.PI*2,true);  // Right eye
         ctx.stroke();
 
-
-
-
-      /*
-      var ctx = canvas.getContext('2d');
-      var raf;
-
-      var ball = {
-      x: 100,
-      y: 100,
-      vx: 5,
-      vy: 2,
-      radius: 25,
-      color: 'blue',
-      draw: function() {
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2, true);
-      ctx.closePath();
-      ctx.fillStyle = this.color;
-      ctx.fill();
-      }
-      };
-
-      function draw() {
-      //ctx.clearRect(0,0, canvas.width, canvas.height);
-      ctx.fillStyle = 'rgba(255,255,255,0.3)';
-      ctx.fillRect(0,0,canvas.width,canvas.height);
-      ball.draw();
-      ball.x += ball.vx;
-      ball.y += ball.vy;
-      ball.vy *= .99;
-      ball.vy += .25;
-
-      if (ball.y + ball.vy > canvas.height || ball.y + ball.vy < 0) {
-      ball.vy = -ball.vy;
-      }
-      if (ball.x + ball.vx > canvas.width || ball.x + ball.vx < 0) {
-      ball.vx = -ball.vx;
-      }
-
-
-
-      raf = window.requestAnimationFrame(draw);
-      }
-
-      canvas.addEventListener('mouseover', function(e){
-      raf = window.requestAnimationFrame(draw);
-      });
-
-      canvas.addEventListener("mouseout",function(e){
-      window.cancelAnimationFrame(raf);
-      });
-
-      ball.draw();
-      */
-
-
     }
   }
 
+  function checkWin(g) { // g for ground
+      // -1 unfinished
+      // 0 draw  // 1 1win
+      // 10 10win
+      'use strict';
+      var arr = [ g.slice(0, 3),
+                  g.slice(3, 6),
+                  g.slice(6, 9),
+                  [g[0], g[3], g[6]],
+                  [g[1], g[4], g[7]],
+                  [g[2], g[5], g[8]],
+                  [g[0], g[4], g[8]],
+                  [g[2], g[4], g[6]]
+                ].map(function (e) {
+              return e[0] + e[1] + e[2];
+          });
+      if (arr.includes(3)) {
+          return 1;
+      }
+      if (arr.includes(30)) {
+          return 10;
+      }
+      if (!g.includes(0)) {
+          return 0;
+      }
+      return -1;
+  }
 
+  function canWin(g, pos, chess) { // g for ground
+
+      // point g to a copy
+      'use strict';
+      g = Array.from(g);
+      // play the move
+      g[pos] = chess;
+      //console.log(g);
+
+      var check = checkWin(g),
+          nexts = [],
+          oppose = chess === 1 ? 10 : 1,
+          oppose_AllLose = true,
+          i;
+
+      if (check !== -1) {
+          return check;
+      }
+
+      // unfinished
+      g.forEach(function (e, i) {
+          if (e === 0) {
+              nexts.push(i);
+          }
+      });
+
+    // oppose's one move can win , oppose win
+    // oppose's every move must lose, I win 
+
+      for (i = 0; i < nexts.length; i = i + 1) {
+          check = canWin(g, nexts[i], oppose);
+         // console.log("check=" + check + " reburn by : canWin " + g + " ," + nexts[i] + " ," + oppose);
+          if (check === oppose) {
+              return check;
+          }
+          if (check === 0) {
+              oppose_AllLose = false;
+          }
+      }
+      if (oppose_AllLose === true) {
+          return chess;
+      }
+
+      // or draw
+      return 0;
+  }
   // A  Chess Model
   var Chess =Backbone.Model.extend({
     defaults: {
@@ -192,7 +208,20 @@ $(document).ready(function() {
         ctx.restore();
       });
 
-      // Todo: if has a winner , draw a line
+      var check = checkWin(board);
+      if (check != -1) {
+        alert("Result: " + check);
+        this.model.set('board',[0,0,0,0,0,0,0,0,0]);
+        myGame.playerSide = myGame.playerSide === 1 ? 10 :1;
+        myGame.computerSide = myGame.playerSide === 1 ? 10 : 1;
+        if (myGame.computerSide === 1) {
+          var pos = Math.floor(Math.random()*9);
+          var board = _.clone(this.model.get("board"));
+
+          board[pos] = myGame.computerSide;
+          this.model.set('board', board);
+        }
+      }
     },
 
     // User click or touch the chessboard, update the model
@@ -222,7 +251,8 @@ $(document).ready(function() {
   });
 
   var myGame = {
-    playerSide: 1 // 1 for X, 10 for O
+    playerSide: 1, // 1 for X, 10 for O
+    computerSide: 10
   }
 
   var OptionsView = Backbone.View.extend({
@@ -235,10 +265,17 @@ $(document).ready(function() {
     },
     chooseSide: function() {
       myGame.playerSide = parseInt(this.$("input[type='radio']:checked").val());
+      myGame.computerSide = myGame.playerSide === 1 ? 10 : 1;
+
       if (myGame.playerSide === 1) {
-        // wait player move
+        // do nothing, just wait player move
       } else {
         // computer take the first move
+        var pos = Math.floor(Math.random()*9);
+        var board = _.clone(this.model.get("board"));
+
+        board[pos] = myGame.computerSide;
+        this.model.set('board', board);
       }
 
     }
@@ -249,10 +286,14 @@ $(document).ready(function() {
   // Main Program
   drawBackground();
 
+  var chess = new Chess;
   var chessView = new ChessView({
-    model: new Chess
+    model: chess
   });
-  chessView.render();
-  var optionsView = new OptionsView();
-  //draw();
+  
+  var optionsView = new OptionsView({
+    model: chess
+  });
+  
+  
 });
