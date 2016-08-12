@@ -101,6 +101,43 @@ $(document).ready(function() {
       return -1;
   }
 
+  function checkWinLine(g) { // g for ground
+      // [start, end] or null
+      'use strict';
+      var cvt = [ [0,2],
+                  [3,5],
+                  [6,8],
+                  [0,6],
+                  [1,7],
+                  [2,8],
+                  [0,8],
+                  [2,6]
+                ];
+      var arr = [ g.slice(0, 3),
+                  g.slice(3, 6),
+                  g.slice(6, 9),
+                  [g[0], g[3], g[6]],
+                  [g[1], g[4], g[7]],
+                  [g[2], g[5], g[8]],
+                  [g[0], g[4], g[8]],
+                  [g[2], g[4], g[6]]
+                ].map(function (e) {
+              return e[0] + e[1] + e[2];
+          });
+      if (arr.includes(3)) {
+          return cvt[arr.indexOf(3)];
+      }
+      if (arr.includes(30)) {
+          return cvt[arr.indexOf(30)];
+      }
+      if (!g.includes(0)) {
+          return null;
+      }
+      return null;
+  }
+
+
+
   function canWin(g, pos, chess) { // g for ground
 
       // point g to a copy
@@ -128,7 +165,7 @@ $(document).ready(function() {
       });
 
     // oppose's one move can win , oppose win
-    // oppose's every move must lose, I win 
+    // oppose's every move must lose, I win
 
       for (i = 0; i < nexts.length; i = i + 1) {
           check = canWin(g, nexts[i], oppose);
@@ -169,6 +206,7 @@ $(document).ready(function() {
     },
 
     initialize: function() {
+      this.myModal = $("#myModal");
       this.listenTo(this.model, "change", this.render);
     },
 
@@ -176,7 +214,7 @@ $(document).ready(function() {
     render: function() {
       var canvas = this.el;
       var ctx = canvas.getContext('2d');
-      var board = this.model.get("board");
+      var board = _.clone(this.model.get("board"));
 
       ctx.clearRect(0,0, canvas.width, canvas.height);
 
@@ -208,52 +246,149 @@ $(document).ready(function() {
         ctx.restore();
       });
 
+
+      // check winner
       var check = checkWin(board);
       if (check != -1) {
-        alert("Result: " + check);
-        this.model.set('board',[0,0,0,0,0,0,0,0,0]);
-        myGame.playerSide = myGame.playerSide === 1 ? 10 :1;
-        myGame.computerSide = myGame.playerSide === 1 ? 10 : 1;
-        if (myGame.computerSide === 1) {
-          var pos = Math.floor(Math.random()*9);
-          var board = _.clone(this.model.get("board"));
-
-          board[pos] = myGame.computerSide;
-          this.model.set('board', board);
+        if (check !== 0) {
+          //drow winner lines
+          var lines = checkWinLine(board);
+          var start = lines[0];
+          var stop = lines[1];
+          ctx.save();
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(75 + 150 * (start % 3) ,75 + 150 * (Math.floor(start / 3) % 3));
+          ctx.lineTo(75 + 150 * (stop % 3) ,75 + 150 * (Math.floor(stop / 3) % 3));
+          ctx.stroke();
+          ctx.restore();
         }
+
+      } else {
+        // not a winner yet, computer move if needed
+        if (myGame.lastMove === myGame.playerSide)
+          this.computerPlay();
       }
     },
 
     // User click or touch the chessboard, update the model
     userPlay: function(e) {
+      // Get user input, the pos of the chessboard
       var offset = this.$el.offset();
       var x = e.pageX  - offset.left;
       var y = e.pageY - offset.top;
       var pos = Math.floor(x / 150) + Math.floor(y / 150) *3;
 
+      // If pos of the chessboard is empty
       var board = _.clone(this.model.get("board"));
-
       if (board[pos] === 0) {
         // can play
-        board[pos] = myGame.playerSide;
-        this.model.set('board', board);
+        this.play(pos, myGame.playerSide)
+      }
+    },
+
+    computerPlay: function() {
+      var board = _.clone(this.model.get("board"));
+
+      // find a way to win
+      var pos = board.reduce(function(prev, curr, currIndex, array) {
+        if (prev != null)
+          return prev;
+        if (curr != 0)
+          return prev;
+        if (canWin(array, currIndex, myGame.computerSide) === myGame.computerSide)
+          return currIndex;
+        else
+          return prev;
+      }, null);
+
+      // find a way to draw
+      if (pos === null) {
+        pos = board.reduce(function(prev, curr, currIndex, array) {
+          if (prev != null)
+            return prev;
+          if (curr != 0)
+            return prev;
+          if (canWin(array, currIndex, myGame.computerSide) === 0)
+            return currIndex;
+          else
+            return prev;
+        }, null);
       }
 
-      //if userWins,set this.model final = "You win"
-      // and return
+      // just find a way to move
+      if (pos === null) {
+        pos = board.indexOf(0);
+      }
 
-      //computer play
-      //if computer wins, set this.model.final = "You lose"
-//      this.model.set('board', newBoard);
-      // and return
+      // Play it
+      this.play(pos, myGame.computerSide);
+    },
 
+    play: function(pos,side) {
+      var board = _.clone(this.model.get("board"));
+      board[pos] = side;
+      myGame.lastMove = side;
+      this.model.set('board', board);
     }
   });
 
   var myGame = {
     playerSide: 1, // 1 for X, 10 for O
-    computerSide: 10
+    computerSide: 10,
+    lastMove: null
   }
+
+  var UIView = Backbone.View.extend({
+    el: $("#ui-layer"),
+    events: {
+      "click" : "hideMe"
+    },
+    hideMe: function() {
+      this.$el.hide();
+      // change side & start new game
+      this.swapSide();
+      this.startNewGame();
+    },
+    initialize: function() {
+      this.listenTo(this.model, "change", this.render);
+      this.$el.hide();
+    },
+    render: function() {
+      var board = _.clone(this.model.get("board"));
+      // check winner
+      var check = checkWin(board);
+      if (check != -1) {
+        if (check === myGame.playerSide)
+          this.$("#ui-layer-inner").html("<h1><small>You Win!</small></h1>");
+        if (check === myGame.computerSide)
+          this.$("#ui-layer-inner").html("<h1> <small>You Lose!</small><h1>");
+        if (check === 0)
+          this.$("#ui-layer-inner").html("<h1> <small>Draw!</small><h1>");
+        this.$el.show();
+      }
+    },
+    swapSide: function() {
+      myGame.playerSide = myGame.playerSide === 1 ? 10 :1;
+      myGame.computerSide = myGame.playerSide === 1 ? 10 : 1;
+    },
+
+    startNewGame: function() {
+      myGame.lastMove = null;
+      this.model.set('board',[0,0,0,0,0,0,0,0,0]);
+      if (myGame.computerSide === 1) {
+        // computer take the first move
+        var pos = Math.floor(Math.random()*9);
+        this.play(pos, myGame.computerSide);
+      }
+    },
+    play: function(pos,side) {
+        var board = _.clone(this.model.get("board"));
+        board[pos] = side;
+        myGame.lastMove = side;
+        this.model.set('board', board);
+    }
+  });
 
   var OptionsView = Backbone.View.extend({
     el: $("#myModal"),
@@ -266,19 +401,24 @@ $(document).ready(function() {
     chooseSide: function() {
       myGame.playerSide = parseInt(this.$("input[type='radio']:checked").val());
       myGame.computerSide = myGame.playerSide === 1 ? 10 : 1;
-
-      if (myGame.playerSide === 1) {
-        // do nothing, just wait player move
-      } else {
+      this.startNewGame();
+    },
+    startNewGame: function() {
+      myGame.lastMove = null;
+      this.model.set('board',[0,0,0,0,0,0,0,0,0]);
+      if (myGame.computerSide === 1) {
         // computer take the first move
         var pos = Math.floor(Math.random()*9);
-        var board = _.clone(this.model.get("board"));
-
-        board[pos] = myGame.computerSide;
-        this.model.set('board', board);
+        this.play(pos, myGame.computerSide);
       }
-
+    },
+    play: function(pos,side) {
+        var board = _.clone(this.model.get("board"));
+        board[pos] = side;
+        myGame.lastMove = side;
+        this.model.set('board', board);
     }
+
   });
 
 
@@ -290,10 +430,13 @@ $(document).ready(function() {
   var chessView = new ChessView({
     model: chess
   });
-  
+
+  var uiView = new UIView({
+    model: chess
+  });
+
   var optionsView = new OptionsView({
     model: chess
   });
-  
-  
+
 });
