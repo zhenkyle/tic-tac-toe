@@ -36,43 +36,6 @@ $(document).ready(function() {
     }
   }
 
-  //A function to draw game-layer
-  function draw() {
-    var canvas = document.getElementById('game-layer');
-    if (canvas.getContext) {
-      var ctx = canvas.getContext('2d');
-        ctx.beginPath();
-        ctx.moveTo(150,0);
-        ctx.lineTo(150,450);
-        ctx.moveTo(300,0);
-        ctx.lineTo(300,450);
-        ctx.moveTo(0,150);
-        ctx.lineTo(450,150);
-        ctx.moveTo(0,300);
-        ctx.lineTo(450,300);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(175,25);
-        ctx.lineTo(275,125);
-        ctx.moveTo(275,25);
-        ctx.lineTo(175,125);
-        ctx.stroke();
-
-        ctx.beginPath();
-        //ctx.moveTo(125,75);
-        ctx.arc(75,75,50,0,Math.PI*2,true); // Outer circle
-        ctx.moveTo(110,75);
-        ctx.arc(75,75,35,0,Math.PI,false);  // Mouth (clockwise)
-        ctx.moveTo(65,65);
-        ctx.arc(60,65,5,0,Math.PI*2,true);  // Left eye
-        ctx.moveTo(95,65);
-        ctx.arc(90,65,5,0,Math.PI*2,true);  // Right eye
-        ctx.stroke();
-
-    }
-  }
-
   function checkWin(g) { // g for ground
       // -1 unfinished
       // 0 draw  // 1 1win
@@ -187,7 +150,7 @@ $(document).ready(function() {
   // A  Chess Model
   var Chess =Backbone.Model.extend({
     defaults: {
-      "board":  [0,0,0
+      'board':  [0,0,0
                 ,0,0,0
                 ,0,0,0]
     }
@@ -198,23 +161,23 @@ $(document).ready(function() {
 
     // Instead of generating a new element, bind to the existing canvas of
     // the App already present in the HTML
-    el: $("#game-layer"),
+    el: $('#game-layer'),
 
     events: {
-      "click": "userPlay",
-      "touchstart ": "userPlay"
+      'click': 'userPlay',
+      'touchstart ': 'userPlay'
     },
 
     initialize: function() {
-      this.myModal = $("#myModal");
-      this.listenTo(this.model, "change", this.render);
+      this.myModal = $('#myModal');
+      this.listenTo(this.model, 'change', this.render);
     },
 
     // Rerender the #game-layer canvas
     render: function() {
       var canvas = this.el;
       var ctx = canvas.getContext('2d');
-      var board = _.clone(this.model.get("board"));
+      var board = _.clone(this.model.get('board'));
 
       ctx.clearRect(0,0, canvas.width, canvas.height);
 
@@ -275,12 +238,21 @@ $(document).ready(function() {
     userPlay: function(e) {
       // Get user input, the pos of the chessboard
       var offset = this.$el.offset();
-      var x = e.pageX  - offset.left;
-      var y = e.pageY - offset.top;
+      switch(e.type) {
+        case 'click':
+          var x = e.pageX  - offset.left;
+          var y = e.pageY - offset.top;
+          break;
+        case 'touchstart':
+          e.preventDefault();
+          var x = e.changedTouches[0].pageX - offset.left;
+          var y = e.changedTouches[0].pageY - offset.top;
+          break;
+      }
       var pos = Math.floor(x / 150) + Math.floor(y / 150) *3;
 
       // If pos of the chessboard is empty
-      var board = _.clone(this.model.get("board"));
+      var board = _.clone(this.model.get('board'));
       if (board[pos] === 0) {
         // can play
         this.play(pos, myGame.playerSide)
@@ -288,7 +260,7 @@ $(document).ready(function() {
     },
 
     computerPlay: function() {
-      var board = _.clone(this.model.get("board"));
+      var board = _.clone(this.model.get('board'));
 
       // find a way to win
       var pos = board.reduce(function(prev, curr, currIndex, array) {
@@ -326,7 +298,7 @@ $(document).ready(function() {
     },
 
     play: function(pos,side) {
-      var board = _.clone(this.model.get("board"));
+      var board = _.clone(this.model.get('board'));
       board[pos] = side;
       myGame.lastMove = side;
       this.model.set('board', board);
@@ -340,31 +312,34 @@ $(document).ready(function() {
   }
 
   var UIView = Backbone.View.extend({
-    el: $("#ui-layer"),
+    el: $('#ui-layer'),
     events: {
-      "click" : "hideMe"
+      'touchstart': 'hideMe',
+      'click': 'hideMe'
     },
-    hideMe: function() {
+    hideMe: function(e) {
+      if (e.type === 'touchstart')
+        e.preventDefault();
       this.$el.hide();
       // change side & start new game
       this.swapSide();
       this.startNewGame();
     },
     initialize: function() {
-      this.listenTo(this.model, "change", this.render);
+      this.listenTo(this.model, 'change', this.render);
       this.$el.hide();
     },
     render: function() {
-      var board = _.clone(this.model.get("board"));
+      var board = _.clone(this.model.get('board'));
       // check winner
       var check = checkWin(board);
       if (check != -1) {
         if (check === myGame.playerSide)
-          this.$("#ui-layer-inner").html("<h1><small>You Win!</small></h1>");
+          this.$('#ui-layer-inner').html('<h1><small>You Win!</small></h1><h4><small>click to change side and play again.</small></h4>');
         if (check === myGame.computerSide)
-          this.$("#ui-layer-inner").html("<h1> <small>You Lose!</small><h1>");
+          this.$('#ui-layer-inner').html('<h1> <small>You Lose!</small><h1><h4><small>click to change side and play again.</small></h4>');
         if (check === 0)
-          this.$("#ui-layer-inner").html("<h1> <small>Draw!</small><h1>");
+          this.$('#ui-layer-inner').html('<h1> <small>Draw!</small><h1><h4><small>click to change side and play again.</small></h4>');
         this.$el.show();
       }
     },
@@ -383,7 +358,7 @@ $(document).ready(function() {
       }
     },
     play: function(pos,side) {
-        var board = _.clone(this.model.get("board"));
+        var board = _.clone(this.model.get('board'));
         board[pos] = side;
         myGame.lastMove = side;
         this.model.set('board', board);
@@ -391,15 +366,15 @@ $(document).ready(function() {
   });
 
   var OptionsView = Backbone.View.extend({
-    el: $("#myModal"),
+    el: $('#myModal'),
     events: {
-      "hidden.bs.modal" : "chooseSide"
+      'hidden.bs.modal' : 'chooseSide'
     },
     initialize: function() {
       this.$el.modal();
     },
     chooseSide: function() {
-      myGame.playerSide = parseInt(this.$("input[type='radio']:checked").val());
+      myGame.playerSide = parseInt(this.$('input[type=\'radio\']:checked').val());
       myGame.computerSide = myGame.playerSide === 1 ? 10 : 1;
       this.startNewGame();
     },
@@ -413,7 +388,7 @@ $(document).ready(function() {
       }
     },
     play: function(pos,side) {
-        var board = _.clone(this.model.get("board"));
+        var board = _.clone(this.model.get('board'));
         board[pos] = side;
         myGame.lastMove = side;
         this.model.set('board', board);
